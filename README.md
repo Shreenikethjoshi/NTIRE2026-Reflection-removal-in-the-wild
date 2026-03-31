@@ -11,7 +11,7 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 This repository contains our submission for the **NTIRE 2026 Single Image Reflection Removal (SIRR) in the Wild** challenge, hosted at CVPR 2026.
 
@@ -28,7 +28,7 @@ We propose **TransReflect**, a Restormer-style hierarchical U-Net trained with a
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Input (blended)
@@ -65,12 +65,12 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for a full technical breakdown.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/ShreenikethJoshi/NTIRE2026-Single-Image-Reflection-Removal.git
-cd NTIRE2026-Single-Image-Reflection-Removal
+git clone https://github.com/Shreenikethjoshi/NTIRE2026-Reflection-removal-in-the-wild.git
+cd NTIRE2026-Reflection-removal-in-the-wild
 ```
 
 ### 2. Install dependencies
@@ -126,7 +126,7 @@ run_inference(
 
 ---
 
-## 🎯 Training Details
+## Training Details
 
 ### Progressive Training Schedule
 
@@ -156,7 +156,7 @@ $$\mathcal{L} = \lambda_1 \mathcal{L}_{L1} + \lambda_p \mathcal{L}_{perc} + \lam
 
 ---
 
-## 🔧 Requirements
+## Requirements
 
 See [`requirements.txt`](requirements.txt). Key dependencies:
 
@@ -169,20 +169,21 @@ numpy
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
-NTIRE2026-Single-Image-Reflection-Removal/
+NTIRE2026-Reflection-removal-in-the-wild/
 ├── train.py             # Main orchestrator: stages, inference, zip creation
 ├── sirr_worker.py       # DDP worker: model definition, dataset, loss, training loop
 ├── requirements.txt     # Python dependencies
 ├── ARCHITECTURE.md      # Detailed technical description
+├── factsheet/           # LaTeX factsheet for challenge report
 └── README.md            # This file
 ```
 
 ---
 
-## 📊 Results
+## Results
 
 Results on the NTIRE 2026 SIRR in the Wild validation set:
 
@@ -194,7 +195,7 @@ Results on the NTIRE 2026 SIRR in the Wild validation set:
 
 ---
 
-## 📃 Citation
+## Citation
 
 If you find this work useful, please cite the NTIRE 2026 challenge report:
 
@@ -209,7 +210,7 @@ If you find this work useful, please cite the NTIRE 2026 challenge report:
 
 ---
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 - Architecture inspired by [Restormer](https://github.com/swz30/Restormer) (Zamir et al., CVPR 2022)
 - Training data: [OpenRR-5k](https://huggingface.co/datasets/qiuzhangTiTi/OpenRR-5k) provided by challenge organizers
@@ -217,8 +218,8 @@ If you find this work useful, please cite the NTIRE 2026 challenge report:
 
 ---
 
-## 📬 Contact
+## Contact
 
 **Shreeniketh Joshi**  
 KLE Technological University  
-📧 [shreenikethjoshi0605@gmail.com](mailto:shreenikethjoshi0605@gmail.com)
+[shreenikethjoshi0605@gmail.com](mailto:shreenikethjoshi0605@gmail.com)

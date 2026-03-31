@@ -2,6 +2,8 @@
 
 > Detailed breakdown of every component in `sirr_worker.py` and `train.py`
 
+![Architecture Overview](Figure.png)
+
 ---
 
 ## 1. Model: `SIRR_Net`
