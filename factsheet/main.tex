@@ -1,0 +1,189 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{cvpr}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{amsmath}
+
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+
+\title{NTIRE 2026 -- SIRR in the Wild Challenge:\\
+\large TransReflect: Gated Attention U-Net for Single Image Reflection Removal}
+\author{refineX}
+
+\begin{document}
+\maketitle
+
+%% ============================================================
+\section{Team Details}
+%% ============================================================
+
+\textbf{Team:} refineX
+\par\vspace{6pt}
+
+\textit{\textbf{Members}}:
+\begin{itemize}[leftmargin=*, noitemsep, label={}]
+    \item Shreeniketh Joshi (\href{mailto:shreenikethjoshi0605@gmail.com}{shreenikethjoshi0605@gmail.com})
+\end{itemize}
+\par\vspace{6pt}
+
+\textit{\textbf{Affiliations}}:
+\begin{itemize}[leftmargin=*, noitemsep, label={}]
+    \item KLE Technological University, India
+\end{itemize}
+
+\textit{\textbf{Username in CodaBench:}} shreeniketh
+
+%% ============================================================
+\section{Method Summary}
+%% ============================================================
+
+\begin{itemize}[leftmargin=*, noitemsep, label={}]
+    \item \textit{(1) Method Title:} Progressive Restormer U-Net with Multi-Loss Training for Single Image Reflection Removal
+    \item \textit{(2) Method:} Restormer-based U-Net (MDTA + GDFN + SE blocks) with progressive patch training
+    \item \textit{(3) Training Data:} OpenRR-5k (competition-provided blended + transmission layer pairs)
+    \item \textit{(4) Traintime [h]:} $\sim$18\,h total across 3 stages (RTX 6000 Ada, 3 GPUs)
+    \item \textit{(5) Runtime [s]:} $\sim$1.8 per image at 1k resolution (with 8-fold TTA)
+    \item \textit{(6) Model Params [M]:} $\sim$8.2\,M
+    \item \textit{(7) FLOPs [G]:} $\sim$120\,G at $256\times 256$
+    \item \textit{(8) Code Link:} \url{https://github.com/ShreenikethJoshi/NTIRE2026-Single-Image-Reflection-Removal}
+\end{itemize}
+
+
+%% ============================================================
+\section{Method Description}
+%% ============================================================
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\linewidth]{Figure.png}
+    \caption{Overview of our proposed SIRR-Net for single image reflection removal.
+             The U-Net encoder-decoder processes the blended input through four resolution
+             levels, with each stage comprising stacked Transformer Blocks (MDTA + GDFN + SE).
+             Skip connections fuse encoder and decoder features.
+             A global residual connection adds the input to the output.}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Network Architecture}
+
+As illustrated in Fig.~\ref{fig:architecture}, we propose \textbf{SIRR-Net}, a Restormer-style
+hierarchical U-Net designed for single image reflection removal.
+The network follows a symmetric encoder-decoder structure operating at four resolution scales.
+
+\noindent\textbf{Encoder.}
+The input blended image is first projected to $D{=}64$ feature channels via a $3{\times}3$ convolution.
+The encoder comprises three stages:
+\textbf{E1} ($64$\,ch, $4$ blocks),
+\textbf{E2} ($128$\,ch, $6$ blocks), and
+\textbf{E3} ($256$\,ch, $6$ blocks),
+each connected by a pixel-unshuffle-based downsampling layer that halves spatial
+resolution without information loss.
+A bottleneck stage (\textbf{Bot}, $512$\,ch, $8$ blocks) processes the deepest representation.
+
+\noindent\textbf{Decoder.}
+Symmetric decoder stages \textbf{D3}--\textbf{D1} upsample features via pixel-shuffle.
+Skip connections from the encoder are concatenated with the upsampled features
+and fused through a $1{\times}1$ convolution before each decoder stage.
+A final $3{\times}3$ convolution maps back to 3 channels, and a
+\textbf{global residual connection} adds the input image to produce the clean output:
+\begin{equation}
+  \hat{T} = \text{clamp}\!\left(\text{Dec}(\text{Enc}(I)) + I,\; 0, 1\right).
+\end{equation}
+
+\noindent\textbf{Transformer Block (TBlock).}
+Each processing stage is composed of stacked TBlocks, each containing:
+\begin{itemize}
+  \item \textbf{MDTA} -- Multi-Dconv Head Transposed Attention~\cite{restormer}:
+        channel-wise attention with complexity $\mathcal{O}(C^2)$ instead of
+        $\mathcal{O}((HW)^2)$, enabling high-resolution training.
+        Depthwise convolutions capture local context before attention.
+  \item \textbf{GDFN} -- Gated Depthwise Feed-Forward Network~\cite{restormer}:
+        uses a SimpleGate (element-wise product of two parallel branches)
+        for non-linear feature modulation with expand ratio $2.66\times$.
+  \item \textbf{SE} -- Squeeze-and-Excite block applied after every stage
+        to recalibrate channel-wise importance using both average and
+        max-pool global context.
+\end{itemize}
+LayerNorm (reimplemented in 2D) is used for stable training with AMP.
+Gradient checkpointing is applied to the bottleneck during training to reduce
+GPU memory consumption.
+
+\subsection{Progressive Training Strategy}
+
+We employ a three-stage progressive training schedule to stabilize
+optimization from coarse to fine detail:
+
+\begin{enumerate}
+  \item \textbf{Stage 1 -- Coarse (128\,px):}
+        Initial convergence on small patches with standard loss weights.
+        Pre-trained checkpoint $\mathbf{w}_1$ is provided externally.
+  \item \textbf{Stage 2 -- Mid (256\,px, 60 epochs):}
+        Training at medium resolution with
+        $\text{lr}{=}5{\times}10^{-5}$, batch size $6$ per GPU.
+        Initialized from Stage~1 weights $\mathbf{w}_1$.
+  \item \textbf{Stage 3 -- Perceptual (384\,px, 30 epochs):}
+        Fine-tuning at higher resolution with increased perceptual and
+        edge loss weights to improve visual quality for subjective evaluation.
+        lr${}=10^{-5}$, batch size $3$ per GPU.
+\end{enumerate}
+
+All stages use \textbf{DistributedDataParallel (DDP)} via \texttt{torchrun}
+on 3$\times$ NVIDIA RTX 6000 Ada (48\,GB each).
+The learning rate is scaled as $\text{lr}_{\text{eff}} = \text{lr} \cdot \sqrt{B_{\text{eff}}/8}$
+and annealed with \textit{CosineAnnealingWarmRestarts}.
+Mixed-precision (AMP fp16) and gradient clipping ($\|\nabla\|_2 \leq 0.01$) are used throughout.
+
+\subsection{Loss Function}
+
+We use a composite loss combining pixel-level, perceptual, structural, frequency,
+and edge-aware terms:
+\begin{equation}
+  \mathcal{L} = \lambda_1 \mathcal{L}_{1} + \lambda_p \mathcal{L}_{\text{perc}}
+               + \lambda_s \mathcal{L}_{\text{MS-SSIM}}
+               + \lambda_f \mathcal{L}_{\text{FFT}}
+               + \lambda_e \mathcal{L}_{\text{Edge}}
+\end{equation}
+
+\begin{itemize}
+  \item $\mathcal{L}_{1}$: Pixel-wise L1 reconstruction loss ($\lambda_1=1.0$).
+  \item $\mathcal{L}_{\text{perc}}$: VGG-19 perceptual loss~\cite{johnson2016perceptual}
+        using ReLU features at layers \texttt{relu1\_2}, \texttt{relu2\_2}, \texttt{relu3\_4}
+        ($\lambda_p=0.1$, boosted to $0.25$ in Stage~3).
+  \item $\mathcal{L}_{\text{MS-SSIM}}$: Multi-scale SSIM loss over 3 scales
+        ($\lambda_s=0.3$).
+  \item $\mathcal{L}_{\text{FFT}}$: L1 loss on FFT magnitude spectra
+        to capture global frequency distribution ($\lambda_f=0.05$).
+  \item $\mathcal{L}_{\text{Edge}}$: Sobel edge L1 loss to preserve
+        fine structural details ($\lambda_e=0.05$, boosted to $0.1$ in Stage~3).
+\end{itemize}
+
+\subsection{Data Augmentation}
+
+During training, we apply the following augmentations jointly to blended
+and transmission image pairs:
+random cropping, horizontal/vertical flips, random $90^\circ$ rotations,
+color jitter (brightness, contrast, saturation, hue),
+JPEG compression simulation (quality 65--95), and
+Gaussian noise injection ($\sigma \in [0.005, 0.02]$).
+Images smaller than the patch size are upscaled with bicubic interpolation.
+
+\subsection{Test-Time Augmentation (TTA)}
+
+At inference, we apply \textbf{8-fold TTA} by processing each input
+through all combinations of horizontal flip, vertical flip, and
+$90^\circ$/$180^\circ$/$270^\circ$ rotation.
+The 8 de-augmented outputs are averaged to produce the final prediction.
+Input images are padded to multiples of 8 before inference and the
+padding is cropped after prediction.
+
+{\small
+\bibliographystyle{ieeenat_fullname}
+\bibliography{main}
+}
+
+\end{document}

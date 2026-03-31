@@ -1,0 +1,38 @@
+# Checkpoints & model weights
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+
+# Submission files
+submission/
+submission.zip
+*.zip
+
+# Dataset
+data/
+*.jpg
+*.jpeg
+*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+venv/
+env/
+
+# Config cache
+*.json
+
+# Logs
+*.log
+runs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
